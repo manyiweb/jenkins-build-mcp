@@ -1,0 +1,7 @@
+.env.local
+services.yaml
+__pycache__/
+.pytest_cache/
+*.pyc
+dist/
+build/

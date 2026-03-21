@@ -1,0 +1,13 @@
+services:
+  - service: order-service
+    trigger_type: parameterized
+    job_path: job/backend/job/order-service-build
+    branch_param_name: BRANCH
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+    enabled: true
+
+  - service: payment-service
+    trigger_type: branch_in_path
+    job_template: job/backend/job/payment-service/job/{branch_double_encoded}
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+    enabled: true

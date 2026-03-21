@@ -1,0 +1,27 @@
+services:
+  - service: reabam-retail-blue
+    site: blue
+    trigger_type: parameterized
+    job_path: job/reabam-retail-new-docker
+    branch_param_name: app_v
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+    enabled: true
+    # If Jenkins already has correct default selections for app_name/app_env/app_act/etc.,
+    # you can omit build_parameters and only pass the branch through app_v.
+    #
+    # If you want stronger guarantees, uncomment and pin the fixed parameters after verifying
+    # the exact values on the job's Build with Parameters page.
+    # build_parameters:
+    #   app_name: reabam-retail
+    #   app_env: fat
+    #   app_jdk_v: jdk21
+    #   app_act: push
+
+  # Example green-site entry. Replace job_path with the real green-site job after verification.
+  # - service: reabam-retail-green
+  #   site: green
+  #   trigger_type: parameterized
+  #   job_path: job/reabam-retail-green-new-docker
+  #   branch_param_name: app_v
+  #   allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+  #   enabled: true

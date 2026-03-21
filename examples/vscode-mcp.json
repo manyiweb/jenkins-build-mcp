@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "jenkinsBuild": {
+      "command": "jenkins-build-mcp",
+      "args": [
+        "--env-file",
+        "C:/path/to/jenkins-build-mcp/.env.local"
+      ]
+    }
+  }
+}
