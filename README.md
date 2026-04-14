@@ -6,14 +6,16 @@
 
 ### 1. 安装
 
-**从 PyPI 安装（推荐）：**
-```bash
-pip install jenkins-build-mcp
-```
-
-**或从 GitHub 安装：**
+**从 GitHub 安装：**
 ```bash
 pip install git+https://github.com/manyiweb/jenkins-build-mcp.git
+```
+
+**或本地开发安装：**
+```bash
+git clone https://github.com/manyiweb/jenkins-build-mcp.git
+cd jenkins-build-mcp
+pip install -e .
 ```
 
 ### 2. 准备配置文件
@@ -43,9 +45,8 @@ services:
 {
   "mcpServers": {
     "jenkinsBuild": {
-      "command": "uvx",
+      "command": "jenkins-build-mcp",
       "args": [
-        "jenkins-build-mcp",
         "--services-config",
         "/path/to/your/services.yaml"
       ],

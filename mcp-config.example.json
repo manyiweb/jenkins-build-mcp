@@ -1,9 +1,8 @@
 {
   "mcpServers": {
     "jenkinsBuild": {
-      "command": "uvx",
+      "command": "jenkins-build-mcp",
       "args": [
-        "jenkins-build-mcp",
         "--services-config",
         "/path/to/your/services.yaml"
       ],
