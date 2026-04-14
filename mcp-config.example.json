@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "jenkinsBuild": {
+      "command": "uvx",
+      "args": [
+        "jenkins-build-mcp",
+        "--services-config",
+        "/path/to/your/services.yaml"
+      ],
+      "env": {
+        "JENKINS_BASE_URL": "http://your-jenkins-server:8080/jenkins",
+        "JENKINS_USER": "your-username",
+        "JENKINS_API_TOKEN": "your-api-token-here"
+      },
+      "type": "stdio"
+    }
+  }
+}
