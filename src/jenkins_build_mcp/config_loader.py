@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -34,26 +35,44 @@ class ServiceConfigStore:
         normalized_site = site_name.strip()
 
         if normalized_site:
+            # 精确匹配
             service = self._cached_services.get((normalized, normalized_site))
-            if service is None or not service.enabled:
-                raise ConfigError(
-                    f"Service '{normalized}' with site '{normalized_site}' is not configured for Jenkins builds."
-                )
-            return service
+            if service and service.enabled:
+                return service
+            # 通配符回退：("*", site)
+            wildcard = self._cached_services.get(("*", normalized_site))
+            if wildcard and wildcard.enabled:
+                return self._expand_wildcard(wildcard, normalized)
+            raise ConfigError(
+                f"Service '{normalized}' with site '{normalized_site}' is not configured for Jenkins builds."
+            )
 
-        matches = [
+        # 无站点：先精确匹配（排除带 site 的条目）
+        exact_matches = [
             service
             for service in self._cached_services.values()
-            if service.enabled and service.service == normalized
+            if service.enabled and service.service == normalized and not service.site
         ]
-        if not matches:
-            raise ConfigError(f"Service '{normalized}' is not configured for Jenkins builds.")
-        if len(matches) > 1:
-            available_sites = ", ".join(sorted(service.site or "<default>" for service in matches))
+        if len(exact_matches) == 1:
+            return exact_matches[0]
+        if len(exact_matches) > 1:
+            available_sites = ", ".join(sorted(service.site or "<default>" for service in exact_matches))
             raise ConfigError(
                 f"Service '{normalized}' requires site selection. Available sites: {available_sites}."
             )
-        return matches[0]
+
+        # 通配符回退：("*", "")
+        wildcard = self._cached_services.get(("*", ""))
+        if wildcard and wildcard.enabled:
+            return self._expand_wildcard(wildcard, normalized)
+
+        raise ConfigError(f"Service '{normalized}' is not configured for Jenkins builds.")
+
+    def _expand_wildcard(self, config: ServiceConfig, service_name: str) -> ServiceConfig:
+        """将通配符配置中的 {service} 占位符替换为实际服务名，返回新实例。"""
+        job_path = config.job_path.replace("{service}", service_name) if config.job_path else None
+        job_template = config.job_template.replace("{service}", service_name) if config.job_template else None
+        return replace(config, service=service_name, job_path=job_path, job_template=job_template)
 
     def _load_if_needed(self) -> None:
         if not self.path.exists():

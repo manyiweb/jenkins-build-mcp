@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 import os
 
@@ -21,7 +22,15 @@ mcp = FastMCP(
     instructions=(
         "Use this server when the user wants to trigger a Jenkins build by service name, "
         "optional site, and optional branch. Call list_services when the service or site is unclear. "
-        "Call trigger_build only when the service is known."
+        "Call trigger_build only when the service is known.\n\n"
+        "## Branch and site mapping\n"
+        "The server automatically converts shorthand inputs:\n"
+        "- Branch: 'dev' → 'origin/develop', date like '316'/'3.16' → 'origin/hotfix/pro_2603.16.02'\n"
+        "- Site: '蓝'/'blue' → blue, '绿'/'green' → green, 'h5' → h5\n"
+        "Pass the user's input directly — no pre-processing needed.\n\n"
+        "## Service name rules\n"
+        "The service name is used directly in the Jenkins job path pattern "
+        "'reabam-{service}-new-docker'. Pass the exact service name as it appears in the job."
     ),
     json_response=True,
     stateless_http=True,
@@ -70,12 +79,43 @@ def list_services() -> list[dict[str, object]]:
     return [service.public_dict() for service in store.list_enabled_services()]
 
 
+def _normalize_branch(raw: str) -> str:
+    """Convert shorthand branch input to the actual Jenkins branch name."""
+    raw = raw.strip()
+    if not raw:
+        return raw
+    # dev / develop → origin/develop
+    if raw.lower() in ("dev", "develop"):
+        return "origin/develop"
+    # Date formats: '316', '3.16', '330', '3.30', '415', '4.15' etc.
+    m = re.match(r"^(\d{1,2})\.?(\d{1,2})$", raw)
+    if m:
+        month = int(m.group(1))
+        day = int(m.group(2))
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            return f"origin/hotfix/pro_26{month:02d}.{day:02d}.02"
+    return raw
+
+
+def _normalize_site(raw: str) -> str:
+    """Convert Chinese / shorthand site input to the standard site parameter."""
+    raw = raw.strip()
+    if not raw:
+        return raw
+    mapping = {
+        "蓝": "blue", "蓝站点": "blue", "blue": "blue",
+        "绿": "green", "绿站点": "green", "green": "green",
+        "h5": "h5",
+    }
+    return mapping.get(raw.lower(), raw)
+
+
 @mcp.tool()
 def trigger_build(service: str, branch: str = "", site: str = "") -> dict[str, object]:
     """Use this when the user explicitly wants to trigger a Jenkins build for a known service. Site is optional unless the same service exists in multiple site variants. Branch is optional for jobs that use only configured build parameters."""
     normalized_service = service.strip()
-    normalized_branch = branch.strip()
-    normalized_site = site.strip()
+    normalized_branch = _normalize_branch(branch)
+    normalized_site = _normalize_site(site)
     try:
         store = _get_store()
         with _get_jenkins_client() as client:
