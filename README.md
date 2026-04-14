@@ -1,77 +1,124 @@
 # Jenkins Build MCP
 
-A standalone Python MCP server for triggering Jenkins builds by service, site, and branch.
+一个用于通过服务名、站点和分支触发 Jenkins 构建的 MCP 服务器。
 
-## Features
+## 快速开始
 
-- `list_services()`
-- `trigger_build(service, branch="", site="")`
-- Supports `parameterized` Jenkins jobs
-- Supports `branch_in_path` Jenkins jobs
-- Supports multi-site service variants such as `blue` and `green`
-- Supports fixed Jenkins parameters plus a branch parameter such as `app_v`
+### 1. 安装
 
-## Install
-
+**从 PyPI 安装（推荐）：**
 ```bash
-pip install .
+pip install jenkins-build-mcp
 ```
 
-From Git:
-
+**或从 GitHub 安装：**
 ```bash
-pip install git+https://your.git.server/your-team/jenkins-build-mcp.git
+pip install git+https://github.com/manyiweb/jenkins-build-mcp.git
 ```
 
-After installation:
+### 2. 准备配置文件
 
-```bash
-jenkins-build-mcp --help
-```
-
-## Configuration
-
-Copy `.env.example` to `.env.local` and fill in real values.
-
-Copy one of the example service mappings to `services.yaml`:
-
-- `services.example.yaml`
-- `services.company.example.yaml`
-
-## Run
-
-Stdio transport:
-
-```bash
-jenkins-build-mcp --env-file .env.local
-```
-
-HTTP transport:
-
-```bash
-jenkins-build-mcp --env-file .env.local --transport streamable-http --host 0.0.0.0 --port 8000
-```
-
-## Service Mapping
-
-Simple branch-based mapping:
+下载 [services.yaml 示例](services.company.example.yaml) 并根据你的 Jenkins 任务配置修改：
 
 ```yaml
 services:
-  - service: order-service
+  - service: dock
     trigger_type: parameterized
-    job_path: job/backend/job/order-service-build
-    branch_param_name: BRANCH
+    job_path: job/reabam-dock-new-docker
+    branch_param_name: app_v
     allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
     enabled: true
 ```
 
-Company-style site-aware mapping where branch goes into `app_v`:
+### 3. 配置 MCP Server
+
+在 Claude Code 的配置文件中添加 MCP server 配置：
+
+**Windows:** `C:\Users\你的用户名\.claude.json`  
+**Mac/Linux:** `~/.claude.json`
+
+参考 [mcp-config.example.json](mcp-config.example.json)，在 `mcpServers` 字段中添加：
+
+```json
+{
+  "mcpServers": {
+    "jenkinsBuild": {
+      "command": "uvx",
+      "args": [
+        "jenkins-build-mcp",
+        "--services-config",
+        "/path/to/your/services.yaml"
+      ],
+      "env": {
+        "JENKINS_BASE_URL": "http://your-jenkins-server:8080/jenkins",
+        "JENKINS_USER": "your-username",
+        "JENKINS_API_TOKEN": "your-api-token-here"
+      },
+      "type": "stdio"
+    }
+  }
+}
+```
+
+**配置说明：**
+- `JENKINS_BASE_URL`: Jenkins 服务器地址（包含路径，如 `/jenkins`）
+- `JENKINS_USER`: Jenkins 用户名
+- `JENKINS_API_TOKEN`: Jenkins API Token（在 Jenkins 用户设置中生成）
+- `--services-config`: services.yaml 文件的绝对路径
+
+### 4. 重启 Claude Code
+
+配置完成后重启 Claude Code，MCP server 即可生效。
+
+### 5. 使用
+
+在 Claude Code 中直接说：
+- "帮我构建 dock 服务 dev 分支"
+- "发布 retail 绿站点 3.16 分支"
+
+**自动映射规则：**
+- `dev` → `origin/develop`
+- `316` / `3.16` → `origin/hotfix/pro_2603.16.02`
+- `蓝` / `blue` → blue 站点
+- `绿` / `green` → green 站点
+
+## 功能特性
+
+- ✅ 列出可用服务：`list_services()`
+- ✅ 触发构建：`trigger_build(service, branch, site)`
+- ✅ 支持参数化构建（parameterized）
+- ✅ 支持分支路径构建（branch_in_path）
+- ✅ 支持多站点服务（blue/green/h5）
+- ✅ 自动分支名和站点名映射
+
+## 服务配置详解
+
+### 基础配置
 
 ```yaml
 services:
-  - service: reabam-retail-blue
+  - service: order-service          # 服务名
+    trigger_type: parameterized     # 构建类型
+    job_path: job/backend/job/order-service-build  # Jenkins 任务路径
+    branch_param_name: BRANCH       # 分支参数名
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"  # 分支名校验正则
+    enabled: true                   # 是否启用
+```
+
+### 多站点配置
+
+```yaml
+services:
+  - service: retail
     site: blue
+    trigger_type: parameterized
+    job_path: job/reabam-retail-new-docker
+    branch_param_name: app_v
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+    enabled: true
+    
+  - service: retail
+    site: green
     trigger_type: parameterized
     job_path: job/reabam-retail-new-docker
     branch_param_name: app_v
@@ -79,65 +126,69 @@ services:
     enabled: true
 ```
 
-If the Jenkins job already has correct default selections for the other parameters, the MCP can send only `app_v` and rely on Jenkins defaults for the rest.
+### 固定参数配置
 
-For the blue-site retail example you provided, this means a user request such as:
-
-```text
-Build blue retail from origin/develop
-```
-
-maps to:
-
-```json
-{
-  "service": "reabam-retail-blue",
-  "branch": "origin/develop"
-}
-```
-
-and Jenkins receives `app_v=origin/develop`.
-
-If you want stricter reproducibility, inspect the job once and add fixed values under `build_parameters`.
-
-If your Jenkins base URL is under a path such as `http://192.168.1.200:8080/jenkins`, set:
-
-```bash
-JENKINS_BASE_URL=http://192.168.1.200:8080/jenkins
-```
-
-Then use only the relative job path in config:
+如果需要传递固定的构建参数：
 
 ```yaml
-job_path: job/reabam-retail-new-docker
+services:
+  - service: my-service
+    trigger_type: parameterized
+    job_path: job/my-service-build
+    branch_param_name: BRANCH
+    build_parameters:
+      ENV: production
+      DEPLOY: "true"
+    enabled: true
 ```
 
-## Codex Config
+## 开发
 
-Add this to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.jenkinsBuild]
-command = "jenkins-build-mcp"
-args = ["--env-file", "C:/path/to/jenkins-build-mcp/.env.local"]
-```
-
-## Package Build
+### 本地安装
 
 ```bash
+git clone https://github.com/manyiweb/jenkins-build-mcp.git
+cd jenkins-build-mcp
 pip install -e ".[dev]"
-python -m build
 ```
 
-## Tests
+### 运行测试
 
 ```bash
 pytest
 python scripts/local_smoke_test.py
 ```
 
-## Security Notes
+### 构建发布
 
-- Do not commit `.env.local`
-- Do not commit real Jenkins tokens
-- Prefer a service account with minimum required Jenkins permissions
+```bash
+python -m build
+twine upload dist/*
+```
+
+## 安全提示
+
+- ⚠️ 不要将 Jenkins API Token 提交到 Git
+- ⚠️ 建议使用专门的服务账号，仅授予必要的 Jenkins 权限
+- ⚠️ `.claude.json` 包含敏感信息，确保文件权限正确
+
+## 故障排查
+
+**MCP 无法连接？**
+- 检查 `.claude.json` 配置是否正确
+- 确认 `jenkins-build-mcp` 已安装：`jenkins-build-mcp --help`
+- 重启 Claude Code
+
+**构建失败？**
+- 检查 Jenkins URL、用户名、Token 是否正确
+- 确认 `services.yaml` 中的 `job_path` 与 Jenkins 任务路径一致
+- 查看 Jenkins 任务是否启用参数化构建
+
+**分支名不对？**
+- 服务器会自动转换 `dev` → `origin/develop`
+- 日期格式会自动转换为 hotfix 分支
+- 其他分支名原样传递
+
+## License
+
+MIT
