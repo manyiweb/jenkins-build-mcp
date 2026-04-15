@@ -39,7 +39,14 @@ _STORE_CACHE: dict[str, ServiceConfigStore] = {}
 
 
 def _config_path() -> str:
-    return os.getenv("SERVICES_CONFIG_PATH", "services.yaml")
+    explicit = os.getenv("SERVICES_CONFIG_PATH")
+    if explicit:
+        return explicit
+    # 使用打包在代码里的默认配置
+    default = Path(__file__).parent / "default_services.yaml"
+    if default.exists():
+        return str(default)
+    return "services.yaml"
 
 
 def _get_store() -> ServiceConfigStore:

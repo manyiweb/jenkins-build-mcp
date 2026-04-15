@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "jenkinsBuild": {
-      "command": "jenkins-build-mcp",
+      "command": "uvx",
       "args": [
-        "--services-config",
-        "/path/to/your/services.yaml"
+        "--from", "git+ssh://git@github.com/manyiweb/jenkins-build-mcp.git",
+        "jenkins-build-mcp"
       ],
       "env": {
         "JENKINS_BASE_URL": "http://your-jenkins-server:8080/jenkins",

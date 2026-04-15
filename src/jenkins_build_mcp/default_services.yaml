@@ -1,0 +1,44 @@
+services:
+  # ── 通配符规则（按站点区分） ──────────────────────────────────────────
+  # {service} 会被实际服务名替换
+  #
+  # 触发规则（用户指令 → site 参数）：
+  #   "构建 xxx"          → site 留空（默认蓝站点）
+  #   "构建 xxx 蓝站点"   → site=blue（与留空等价）
+  #   "构建 xxx 绿站点"   → site=green
+  #   "构建 H5 xxx"      → site=h5
+
+  # 蓝站点（默认，不传 site 时生效）
+  - service: "*"
+    trigger_type: parameterized
+    job_path: job/reabam-{service}-new-docker
+    branch_param_name: app_v
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+    enabled: true
+
+  # 蓝站点（显式传 site=blue 时生效）
+  - service: "*"
+    site: blue
+    trigger_type: parameterized
+    job_path: job/reabam-{service}-new-docker
+    branch_param_name: app_v
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+    enabled: true
+
+  # 绿站点
+  - service: "*"
+    site: green
+    trigger_type: parameterized
+    job_path: job/reabam-{service}-green-docker
+    branch_param_name: app_v
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+    enabled: true
+
+  # H5 前端
+  - service: "*"
+    site: h5
+    trigger_type: parameterized
+    job_path: job/reabam-h5-{service}-new-docker
+    branch_param_name: app_v
+    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
+    enabled: true

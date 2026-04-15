@@ -4,35 +4,7 @@
 
 ## 快速开始
 
-### 1. 安装
-
-**从 GitHub 安装：**
-```bash
-pip install git+https://github.com/manyiweb/jenkins-build-mcp.git
-```
-
-**或本地开发安装：**
-```bash
-git clone https://github.com/manyiweb/jenkins-build-mcp.git
-cd jenkins-build-mcp
-pip install -e .
-```
-
-### 2. 准备配置文件
-
-下载 [services.yaml 示例](services.company.example.yaml) 并根据你的 Jenkins 任务配置修改：
-
-```yaml
-services:
-  - service: dock
-    trigger_type: parameterized
-    job_path: job/reabam-dock-new-docker
-    branch_param_name: app_v
-    allowed_branch_pattern: "^[A-Za-z0-9._/-]+$"
-    enabled: true
-```
-
-### 3. 配置 MCP Server
+### 1. 配置 MCP Server
 
 在 Claude Code 的配置文件中添加 MCP server 配置：
 
@@ -45,10 +17,10 @@ services:
 {
   "mcpServers": {
     "jenkinsBuild": {
-      "command": "jenkins-build-mcp",
+      "command": "uvx",
       "args": [
-        "--services-config",
-        "/path/to/your/services.yaml"
+        "--from", "git+ssh://git@github.com/manyiweb/jenkins-build-mcp.git",
+        "jenkins-build-mcp"
       ],
       "env": {
         "JENKINS_BASE_URL": "http://your-jenkins-server:8080/jenkins",
@@ -65,13 +37,15 @@ services:
 - `JENKINS_BASE_URL`: Jenkins 服务器地址（包含路径，如 `/jenkins`）
 - `JENKINS_USER`: Jenkins 用户名
 - `JENKINS_API_TOKEN`: Jenkins API Token（在 Jenkins 用户设置中生成）
-- `--services-config`: services.yaml 文件的绝对路径
 
-### 4. 重启 Claude Code
+> 无需手动安装或 clone 仓库，`uvx` 会自动从 GitHub 拉取代码并运行。  
+> 服务配置（services.yaml）已内置在包中，开箱即用。
+
+### 2. 重启 Claude Code
 
 配置完成后重启 Claude Code，MCP server 即可生效。
 
-### 5. 使用
+### 3. 使用
 
 在 Claude Code 中直接说：
 - "帮我构建 dock 服务 dev 分支"
@@ -164,7 +138,6 @@ python scripts/local_smoke_test.py
 
 ```bash
 python -m build
-twine upload dist/*
 ```
 
 ## 安全提示
@@ -177,7 +150,8 @@ twine upload dist/*
 
 **MCP 无法连接？**
 - 检查 `.claude.json` 配置是否正确
-- 确认 `jenkins-build-mcp` 已安装：`jenkins-build-mcp --help`
+- 确认本机已安装 `uv`（`uvx` 依赖它）：`pip install uv`
+- 确认 SSH key 已配置（用于访问 GitHub 仓库）
 - 重启 Claude Code
 
 **构建失败？**
